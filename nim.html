@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nim</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --p1: #2196F3;
+            --p2: #FF9800;
+            --trap: #9C27B0;
+            --star: #FFB300;
+            --bad: #e53935;
+            --ink: #333;
+            --muted: #666;
+            --stone: #8e44ad;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: var(--ink);
+            min-height: 100vh;
+            padding: 20px 16px 40px;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 6px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--muted);
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+        }
+
+        .settings {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 24px;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05em;
+        }
+
+        .settings label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        input[type="text"], input[type="number"] {
+            font: inherit;
+            font-weight: normal;
+            padding: 5px 8px;
+            border: 1.5px solid #bbb;
+            border-radius: 6px;
+            width: 5em;
+        }
+
+        input#rulesInput {
+            width: 8em;
+        }
+
+        input.invalid {
+            border-color: var(--bad);
+            background: #fff0f0;
+        }
+
+        .error {
+            color: var(--bad);
+            font-size: 0.9em;
+            min-height: 1em;
+        }
+
+        button {
+            font: inherit;
+            padding: 6px 14px;
+            font-weight: 600;
+            border: 1.5px solid var(--ink);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            background: white;
+            color: var(--ink);
+            white-space: nowrap;
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--ink);
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        /* ---------- Tabs ---------- */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .tab {
+            font-size: 1.2em;
+            padding: 8px 24px;
+            border-radius: 999px;
+        }
+
+        .tab.active {
+            background: var(--ink);
+            color: white;
+        }
+
+        /* ---------- Play mode ---------- */
+        .players {
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .player {
+            --pc: var(--p1);
+            width: 220px;
+            border: 3px solid #ddd;
+            border-radius: 14px;
+            padding: 12px;
+            text-align: center;
+            background: white;
+            transition: all 0.2s ease;
+            opacity: 0.6;
+        }
+
+        .player.p2 {
+            --pc: var(--p2);
+        }
+
+        .player .pname {
+            font-size: 1.6em;
+            font-weight: bold;
+            color: var(--pc);
+            outline: none;
+            border-radius: 6px;
+        }
+
+        .player .pname:focus {
+            background: #f2f2f2;
+        }
+
+        .player .ptag {
+            min-height: 1.5em;
+            margin-top: 4px;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .player.active {
+            border-color: var(--pc);
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        .player.winner {
+            border-color: var(--star);
+            background: #fff8dc;
+            opacity: 1;
+            transform: scale(1.08);
+        }
+
+        .count {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 120px;
+        }
+
+        .count .num {
+            font-size: 3.5em;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .count small {
+            color: var(--muted);
+            font-size: 1em;
+        }
+
+        #stoneGrid {
+            display: grid;
+            gap: 12px;
+            justify-content: center;
+            margin: 10px auto 20px;
+            min-height: 60px;
+        }
+
+        .stone {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: var(--stone);
+            transition: transform 0.35s ease, opacity 0.35s ease;
+        }
+
+        .stone.taken {
+            transform: scale(0.2);
+            opacity: 0;
+        }
+
+        .stone.preview {
+            outline: 3px solid var(--bad);
+            outline-offset: 3px;
+            animation: wiggle 0.4s ease-in-out infinite alternate;
+        }
+
+        @keyframes wiggle {
+            from { transform: rotate(-8deg); }
+            to { transform: rotate(8deg); }
+        }
+
+        #message {
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: 600;
+            min-height: 1.6em;
+            margin-bottom: 16px;
+        }
+
+        #message.win {
+            font-size: 2em;
+            color: #b8860b;
+        }
+
+        #takeButtons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .take-btn {
+            font-size: 1.4em;
+            padding: 10px 22px;
+            border-width: 2.5px;
+            border-radius: 12px;
+            border-color: var(--pc, var(--ink));
+            color: var(--pc, var(--ink));
+        }
+
+        .take-btn:hover:not(:disabled) {
+            background: var(--pc, var(--ink));
+            color: white;
+        }
+
+        .game-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        #history {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 16px;
+            font-size: 0.95em;
+        }
+
+        #history li {
+            padding: 3px 10px;
+            border-radius: 999px;
+            color: white;
+            background: var(--pc);
+        }
+
+        /* ---------- Explore mode ---------- */
+        .tools {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .tool {
+            font-size: 1.15em;
+            padding: 8px 18px;
+            border-color: var(--tc);
+            color: var(--tc);
+        }
+
+        .tool:hover:not(:disabled), .tool.active {
+            background: var(--tc);
+            color: white;
+        }
+
+        .tool[data-tool="trap"] { --tc: var(--trap); }
+        .tool[data-tool="star"] { --tc: #d18f00; }
+        .tool[data-tool="arrow"] { --tc: var(--p1); }
+
+        .hint {
+            text-align: center;
+            color: var(--muted);
+            font-size: 1.1em;
+            margin-top: 12px;
+            min-height: 1.4em;
+        }
+
+        .hint.warn {
+            color: var(--bad);
+            font-weight: 600;
+        }
+
+        .line-wrap {
+            overflow-x: auto;
+            padding: 4px 0;
+        }
+
+        #lineSvg {
+            display: block;
+            width: 100%;
+            min-width: 640px;
+            height: auto;
+            margin: 0 auto;
+            user-select: none;
+        }
+
+        #lineSvg .num {
+            cursor: pointer;
+        }
+
+        #lineSvg .num circle.dot {
+            fill: white;
+            stroke: var(--ink);
+            stroke-width: 2.5;
+            transition: fill 0.15s;
+        }
+
+        #lineSvg .num:hover circle.dot {
+            fill: #eef6ff;
+        }
+
+        #lineSvg .num.selected circle.dot {
+            fill: #d6eaff;
+            stroke: var(--p1);
+            stroke-width: 4;
+        }
+
+        #lineSvg .num.flash circle.dot {
+            fill: #ffd6d6;
+            stroke: var(--bad);
+            stroke-width: 4;
+        }
+
+        #lineSvg .num.target circle.dot {
+            stroke: var(--p1);
+            stroke-dasharray: 5 4;
+            stroke-width: 3;
+        }
+
+        #lineSvg text {
+            font-family: inherit;
+        }
+
+        #lineSvg .arrow {
+            fill: none;
+            stroke: var(--ink);
+            stroke-width: 2.5;
+        }
+
+        #lineSvg .arrow-label {
+            font-size: 14px;
+            font-weight: bold;
+            fill: var(--ink);
+        }
+
+        .explore-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Nim</h1>
+    <p class="subtitle">Take turns taking stones. Whoever takes the last stone wins!</p>
+
+    <div class="tabs">
+        <button class="tab active" id="tabPlay" onclick="showView('play')">Play</button>
+        <button class="tab" id="tabExplore" onclick="showView('explore')">Explore</button>
+    </div>
+
+    <div class="card settings">
+        <label>You may take: <input type="text" id="rulesInput" value="1, 2"></label>
+        <span class="error" id="rulesError"></span>
+    </div>
+
+    <!-- ================= PLAY ================= -->
+    <section id="playView">
+        <div class="card settings">
+            <label>Stones: <input type="number" id="startInput" min="1" max="20" value="11"></label>
+            <label>Grid width: <input type="number" id="widthInput" min="1" max="20" value="5"></label>
+        </div>
+
+        <div class="card">
+            <div class="players">
+                <div class="player p1" id="player0">
+                    <div class="pname" contenteditable="true" spellcheck="false">Player 1</div>
+                    <div class="ptag"></div>
+                </div>
+                <div class="count">
+                    <div class="num" id="countNum">11</div>
+                    <small id="countLabel">stones left</small>
+                </div>
+                <div class="player p2" id="player1">
+                    <div class="pname" contenteditable="true" spellcheck="false">Player 2</div>
+                    <div class="ptag"></div>
+                </div>
+            </div>
+
+            <div id="stoneGrid"></div>
+            <div id="message"></div>
+            <div id="takeButtons"></div>
+            <div class="game-actions">
+                <button id="undoBtn" onclick="undo()">↩ Undo</button>
+                <button onclick="newGame()">New Game</button>
+            </div>
+            <ol id="history"></ol>
+        </div>
+    </section>
+
+    <!-- ================= EXPLORE ================= -->
+    <section id="exploreView" hidden>
+        <div class="card settings">
+            <label>Numbers up to: <input type="number" id="maxInput" min="1" max="30" value="20"></label>
+        </div>
+
+        <div class="card">
+            <div class="tools">
+                <button class="tool active" data-tool="arrow" onclick="setTool('arrow')">↶ Arrow</button>
+                <button class="tool" data-tool="star" onclick="setTool('star')">⭐ Gold Star</button>
+                <button class="tool" data-tool="trap" onclick="setTool('trap')">☠️ Trap</button>
+            </div>
+            <p class="hint" id="toolHint"></p>
+
+            <div class="line-wrap">
+                <svg id="lineSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+            </div>
+
+            <div class="explore-actions">
+                <button onclick="clearArrows()">Clear Arrows</button>
+                <button onclick="clearAll()">Clear All</button>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+    const TRAP = '☠️';
+    const STAR = '⭐';
+
+    let rules = [1, 2];
+
+    // ================= Shared helpers =================
+
+    function clamp(v, lo, hi) {
+        return Math.max(lo, Math.min(hi, v));
+    }
+
+    function readInt(input, lo, hi, fallback) {
+        let v = parseInt(input.value, 10);
+        if (isNaN(v)) v = fallback;
+        v = clamp(v, lo, hi);
+        input.value = v;
+        return v;
+    }
+
+    // "1, 3, or 4"
+    function orList(nums) {
+        if (nums.length === 1) return String(nums[0]);
+        if (nums.length === 2) return `${nums[0]} or ${nums[1]}`;
+        return nums.slice(0, -1).join(', ') + ', or ' + nums[nums.length - 1];
+    }
+
+    function parseRules(text) {
+        const parts = text.split(/[\s,]+/).filter(s => s.length > 0);
+        if (parts.length === 0) return null;
+        const nums = [];
+        for (const p of parts) {
+            if (!/^\d+$/.test(p)) return null;
+            const v = parseInt(p, 10);
+            if (v < 1 || v > 20) return null;
+            nums.push(v);
+        }
+        return [...new Set(nums)].sort((a, b) => a - b);
+    }
+
+    function onRulesChange() {
+        const input = document.getElementById('rulesInput');
+        const parsed = parseRules(input.value);
+        const err = document.getElementById('rulesError');
+        if (!parsed) {
+            input.classList.add('invalid');
+            err.textContent = 'Type numbers from 1 to 20, like 1, 3, 4';
+            return;
+        }
+        input.classList.remove('invalid');
+        err.textContent = '';
+        if (parsed.join() === rules.join()) return;
+        rules = parsed;
+        newGame();
+        // Drop arrows that are no longer legal moves.
+        ex.arrows = ex.arrows.filter(a => rules.includes(a.from - a.to));
+        ex.selected = null;
+        renderLine();
+        updateHint();
+    }
+
+    function showView(name) {
+        document.getElementById('playView').hidden = name !== 'play';
+        document.getElementById('exploreView').hidden = name !== 'explore';
+        document.getElementById('tabPlay').classList.toggle('active', name === 'play');
+        document.getElementById('tabExplore').classList.toggle('active', name === 'explore');
+    }
+
+    // ================= Play mode =================
+
+    const game = {
+        start: 11,
+        left: 11,
+        turn: 0,      // index of the player whose turn it is
+        history: [],  // [{player, took}]
+    };
+    let hoverTake = null;
+
+    function playerName(i) {
+        const t = document.querySelector(`#player${i} .pname`).textContent.trim();
+        return t || `Player ${i + 1}`;
+    }
+
+    function canMove(left) {
+        return rules.some(t => t <= left);
+    }
+
+    function newGame() {
+        game.start = readInt(document.getElementById('startInput'), 1, 20, 11);
+        game.left = game.start;
+        game.turn = 0;
+        game.history = [];
+        hoverTake = null;
+        buildStones();
+        renderPlay();
+    }
+
+    function buildStones() {
+        const grid = document.getElementById('stoneGrid');
+        grid.innerHTML = '';
+        for (let i = 0; i < game.start; i++) {
+            const s = document.createElement('div');
+            s.className = 'stone';
+            grid.appendChild(s);
+        }
+        applyWidth();
+    }
+
+    function applyWidth(e) {
+        const input = document.getElementById('widthInput');
+        // While typing, don't rewrite the field; clamp it once editing is done.
+        const w = (e && e.type === 'input')
+            ? clamp(parseInt(input.value, 10) || 5, 1, 20)
+            : readInt(input, 1, 20, 5);
+        document.getElementById('stoneGrid').style.gridTemplateColumns = `repeat(${w}, 52px)`;
+    }
+
+    function take(k) {
+        if (!canMove(game.left) || k > game.left) return;
+        game.history.push({ player: game.turn, took: k });
+        game.left -= k;
+        game.turn = 1 - game.turn;
+        renderPlay();
+    }
+
+    function undo() {
+        const last = game.history.pop();
+        if (!last) return;
+        game.left += last.took;
+        game.turn = last.player;
+        renderPlay();
+    }
+
+    function renderPlay() {
+        const over = !canMove(game.left);
+        const winner = 1 - game.turn;
+
+        // Stones: always take from the end so the rest stay put.
+        const stones = document.querySelectorAll('#stoneGrid .stone');
+        const previewFrom = (hoverTake !== null && !over && hoverTake <= game.left) ? game.left - hoverTake : Infinity;
+        stones.forEach((s, i) => {
+            s.classList.toggle('taken', i >= game.left);
+            s.classList.toggle('preview', i >= previewFrom && i < game.left);
+        });
+
+        document.getElementById('countNum').textContent = game.left;
+        document.getElementById('countLabel').textContent = game.left === 1 ? 'stone left' : 'stones left';
+
+        // Player cards
+        for (let i = 0; i < 2; i++) {
+            const card = document.getElementById(`player${i}`);
+            card.classList.toggle('active', !over && game.turn === i);
+            card.classList.toggle('winner', over && winner === i);
+            let tag = '';
+            if (over) tag = winner === i ? 'Winner!' : '';
+            else if (game.turn === i) tag = 'Your turn!';
+            card.querySelector('.ptag').textContent = tag;
+        }
+
+        // Message
+        const msg = document.getElementById('message');
+        msg.classList.toggle('win', over);
+        if (over && game.left === 0) {
+            msg.textContent = `${playerName(winner)} took the last stone and wins!`;
+        } else if (over) {
+            msg.textContent = `${playerName(game.turn)} can't take any stones. ${playerName(winner)} wins!`;
+        } else {
+            msg.textContent = `${playerName(game.turn)}, take ${orList(rules)} stone${rules.length === 1 && rules[0] === 1 ? '' : 's'}.`;
+        }
+
+        // Take buttons
+        const wrap = document.getElementById('takeButtons');
+        wrap.innerHTML = '';
+        const color = game.turn === 0 ? 'var(--p1)' : 'var(--p2)';
+        rules.forEach(k => {
+            const b = document.createElement('button');
+            b.className = 'take-btn';
+            b.style.setProperty('--pc', color);
+            b.textContent = `Take ${k}`;
+            b.disabled = over || k > game.left;
+            b.onclick = () => take(k);
+            b.onmouseenter = () => { hoverTake = k; renderStonesPreview(); };
+            b.onmouseleave = () => { hoverTake = null; renderStonesPreview(); };
+            wrap.appendChild(b);
+        });
+
+        document.getElementById('undoBtn').disabled = game.history.length === 0;
+
+        // History
+        const hist = document.getElementById('history');
+        hist.innerHTML = '';
+        let left = game.start;
+        game.history.forEach(h => {
+            left -= h.took;
+            const li = document.createElement('li');
+            li.style.setProperty('--pc', h.player === 0 ? 'var(--p1)' : 'var(--p2)');
+            li.textContent = `${playerName(h.player)} took ${h.took} → ${left}`;
+            hist.appendChild(li);
+        });
+    }
+
+    function renderStonesPreview() {
+        const over = !canMove(game.left);
+        const previewFrom = (hoverTake !== null && !over && hoverTake <= game.left) ? game.left - hoverTake : Infinity;
+        document.querySelectorAll('#stoneGrid .stone').forEach((s, i) => {
+            s.classList.toggle('preview', i >= previewFrom && i < game.left);
+        });
+    }
+
+    // ================= Explore mode =================
+
+    const ex = {
+        max: 20,
+        marks: {},       // n -> 'trap' | 'star'
+        arrows: [],      // [{from, to}]
+        tool: 'arrow',
+        selected: null,  // start of an arrow being drawn
+        flash: null,
+    };
+
+    const SPACING = 60;
+    const MARGIN = 40;
+    const R = 22;
+
+    function arcHeight(d) {
+        return Math.min(18 + 13 * d, 170);
+    }
+
+    function setTool(tool) {
+        ex.tool = tool;
+        ex.selected = null;
+        document.querySelectorAll('.tool').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+        renderLine();
+        updateHint();
+    }
+
+    // Only used to explain an illegal arrow; otherwise the line is blank.
+    function updateHint(warning) {
+        const hint = document.getElementById('toolHint');
+        hint.classList.toggle('warn', !!warning);
+        hint.textContent = warning || '';
+    }
+
+    // Numbers you can move to on the line (which starts at 1, so taking
+    // every stone isn't shown as an arrow).
+    function legalTargets(n) {
+        return rules.filter(t => t < n).map(t => n - t);
+    }
+
+    function xOf(n) {
+        return MARGIN + (n - 1) * SPACING;
+    }
+
+    function renderLine() {
+        const svg = document.getElementById('lineSvg');
+        const maxRule = Math.max(...rules.filter(t => t <= ex.max), 1);
+        const top = arcHeight(maxRule) + 34;
+        const lineY = top + R;
+        const width = 2 * MARGIN + (ex.max - 1) * SPACING;
+        const height = lineY + R + 62;
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        svg.style.maxWidth = `${Math.max(width, 640)}px`;
+
+        const parts = [];
+
+        parts.push(`
+            <defs>
+                <marker id="ah" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                    <polygon points="0 0, 11 5, 0 10" fill="#333"/>
+                </marker>
+            </defs>`);
+
+        // The line itself
+        parts.push(`<line x1="${MARGIN - 25}" y1="${lineY}" x2="${xOf(ex.max) + 25}" y2="${lineY}" stroke="#999" stroke-width="3" stroke-linecap="round"/>`);
+
+        // Arrows (drawn under the number circles)
+        const sy = lineY - R - 2;
+        ex.arrows.forEach(a => {
+            const x1 = xOf(a.from);
+            const x2 = xOf(a.to);
+            const h = arcHeight(a.from - a.to);
+            const mid = (x1 + x2) / 2;
+            // Quadratic bezier apex sits halfway to the control point.
+            parts.push(`<path class="arrow" d="M ${x1 - 4},${sy} Q ${mid},${sy - 2 * h} ${x2 + 4},${sy}" marker-end="url(#ah)"/>`);
+            parts.push(`<text class="arrow-label" x="${mid}" y="${sy - h - 6}" text-anchor="middle">−${a.from - a.to}</text>`);
+        });
+
+        // Numbers and marks
+        const targets = ex.tool === 'arrow' && ex.selected !== null ? legalTargets(ex.selected) : [];
+        for (let n = 1; n <= ex.max; n++) {
+            const x = xOf(n);
+            const mark = ex.marks[n];
+            const cls = ['num'];
+            if (n === ex.selected) cls.push('selected');
+            if (n === ex.flash) cls.push('flash');
+            if (targets.includes(n)) cls.push('target');
+
+            const symbol = mark === 'trap' ? TRAP : mark === 'star' ? STAR : '';
+            parts.push(`
+                <g class="${cls.join(' ')}" data-n="${n}">
+                    <rect x="${x - SPACING / 2}" y="${lineY - R - 6}" width="${SPACING}" height="${R * 2 + 66}" fill="transparent"/>
+                    <circle class="dot" cx="${x}" cy="${lineY}" r="${R}"/>
+                    <text x="${x}" y="${lineY + 7}" text-anchor="middle" font-size="20" font-weight="bold" fill="#333">${n}</text>
+                    <text x="${x}" y="${lineY + R + 42}" text-anchor="middle" font-size="30">${symbol}</text>
+                </g>`);
+        }
+
+        svg.innerHTML = parts.join('');
+    }
+
+    function onLineClick(e) {
+        const g = e.target.closest('[data-n]');
+        if (!g) return;
+        const n = parseInt(g.dataset.n, 10);
+
+        if (ex.tool === 'trap' || ex.tool === 'star') {
+            if (ex.marks[n] === ex.tool) delete ex.marks[n];
+            else ex.marks[n] = ex.tool;
+            renderLine();
+            return;
+        }
+
+        // Arrow tool
+        if (ex.selected === null) {
+            ex.selected = n;
+        } else if (ex.selected === n) {
+            ex.selected = null;
+        } else {
+            const from = ex.selected;
+            if (!rules.includes(from - n)) {
+                const targets = legalTargets(from);
+                const why = n > from
+                    ? `Arrows go down: taking stones makes the number smaller!`
+                    : `You can't go from ${from} to ${n}. ` +
+                      (targets.length ? `From ${from} you can go to ${orList(targets)}.` : '');
+                flash(n, why);
+                return;
+            }
+            const i = ex.arrows.findIndex(a => a.from === from && a.to === n);
+            if (i >= 0) ex.arrows.splice(i, 1);
+            else ex.arrows.push({ from, to: n });
+            ex.selected = null;
+        }
+        renderLine();
+        updateHint();
+    }
+
+    let flashTimer = null;
+    function flash(n, why) {
+        ex.flash = n;
+        renderLine();
+        updateHint(why);
+        clearTimeout(flashTimer);
+        flashTimer = setTimeout(() => {
+            ex.flash = null;
+            renderLine();
+            updateHint();
+        }, 1800);
+    }
+
+    function clearArrows() {
+        ex.arrows = [];
+        ex.selected = null;
+        renderLine();
+        updateHint();
+    }
+
+    function clearAll() {
+        ex.marks = {};
+        clearArrows();
+    }
+
+    function onMaxChange() {
+        ex.max = readInt(document.getElementById('maxInput'), 1, 30, 20);
+        for (const k of Object.keys(ex.marks)) {
+            if (+k > ex.max) delete ex.marks[k];
+        }
+        ex.arrows = ex.arrows.filter(a => a.from <= ex.max);
+        if (ex.selected !== null && ex.selected > ex.max) ex.selected = null;
+        renderLine();
+        updateHint();
+    }
+
+    // ================= Wire up =================
+
+    document.getElementById('rulesInput').addEventListener('input', onRulesChange);
+    document.getElementById('startInput').addEventListener('change', newGame);
+    document.getElementById('widthInput').addEventListener('input', applyWidth);
+    document.getElementById('widthInput').addEventListener('change', applyWidth);
+    document.getElementById('maxInput').addEventListener('change', onMaxChange);
+    document.getElementById('lineSvg').addEventListener('click', onLineClick);
+    document.querySelectorAll('.pname').forEach(el => {
+        el.addEventListener('input', renderPlay);
+        el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
+    });
+
+    newGame();
+    renderLine();
+    updateHint();
+</script>
+</body>
+</html>
